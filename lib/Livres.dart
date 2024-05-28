@@ -52,11 +52,19 @@ class _LivresState extends State<Livres> {
       appBar: AppBar(
         title: Text('Library Books'),
         backgroundColor: Colors.blueAccent,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            onPressed: () {
+              showSearch(context: context, delegate: BookSearchDelegate(_searchBooks,books));
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
-        itemCount: books.length,
+        itemCount: _filteredBooks.length,
         itemBuilder: (context, index) {
-          final book = books[index];
+          final book = _filteredBooks[index];
           return Dismissible(
             key: UniqueKey(),
             direction: DismissDirection.endToStart,
@@ -69,6 +77,7 @@ class _LivresState extends State<Livres> {
             onDismissed: (direction) {
               setState(() {
                 books.removeAt(index);
+                _filteredBooks.removeAt(index);
               });
             },
             child: InkWell(
@@ -102,34 +111,34 @@ class _LivresState extends State<Livres> {
                   ),
                   subtitle: Text(book.author),
                   trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                  IconButton(
-                  icon: Icon(Icons.edit),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddBookScreen(
-                          onBookAdded: (editedBook) {
-                            setState(() {
-                              books[index] = editedBook;
-                            });
-                          },
-                          bookToEdit: book,
-                        ),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddBookScreen(
+                                onBookAdded: (editedBook) {
+                                  setState(() {
+                                    books[index] = editedBook;
+                                    _filteredBooks = List.from(books);
+                                  });
+                                },
+                                bookToEdit: book,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                      Icon(Icons.arrow_forward_ios),
+                    ],
+                  ),
                 ),
-          Icon(Icons.arrow_forward_ios),
-          ],
-          ),
-          ),
-          ),
-          ),
+              ),
+            ),
           );
-
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -143,6 +152,7 @@ class _LivresState extends State<Livres> {
                 onBookAdded: (newBook) {
                   setState(() {
                     books.add(newBook);
+                    _filteredBooks = List.from(books);
                   });
                 },
               ),
@@ -150,6 +160,98 @@ class _LivresState extends State<Livres> {
           );
         },
       ),
+    );
+  }
+}
+class BookSearchDelegate extends SearchDelegate {
+  final Function(String) searchFunction;
+  final List<Livre> books;
+  BookSearchDelegate(this.searchFunction, this.books);
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          searchFunction(query);
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, '');
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final List<Livre> searchResults = query.isEmpty
+        ? []
+        : books.where((book) =>
+    book.title.toLowerCase().contains(query.toLowerCase()) ||
+        book.author.toLowerCase().contains(query.toLowerCase())).toList();
+
+    return ListView.builder(
+      itemCount: searchResults.length,
+      itemBuilder: (context, index) {
+        final book = searchResults[index];
+        return ListTile(
+          title: Text(book.title),
+          subtitle: Text(book.author),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BookDetailsScreen(book: book),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    final List<Livre> suggestionList = query.isEmpty
+        ? books
+        : books.where((book) =>
+    book.title.toLowerCase().contains(query.toLowerCase()) ||
+        book.author.toLowerCase().contains(query.toLowerCase())).toList();
+
+    return ListView.builder(
+      itemCount: suggestionList.length,
+      itemBuilder: (context, index) {
+        final book = suggestionList[index];
+        return ListTile(
+          title: Text(book.title),
+          subtitle: Text(book.author),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BookDetailsScreen(book: book),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.copyWith(
+      primaryColor: Colors.blueAccent,
     );
   }
 }
